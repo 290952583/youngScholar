@@ -1,0 +1,472 @@
+说明
+    前端与后台使用Cookie保持会话，因此前端请求的时候需要携带相应Cookie, 请求响应时需要保存Cookie。
+    前端需要自动处理301重定向，否则可能得不到正确响应。
+    所有与金额相关的数据类型都是int, 单位:分
+    如无特殊说明，请求为参数格式json，请求时需要设置Content-Type:application/json;charset=UTF-8
+        响应格式为json
+        请求成功时，响应格式如下，在文档中简写为"code":0 或 "data":{...}
+            响应不包含数据时
+            {
+                 "code":0,
+                 "codeInfo":"OK",
+                 "data":null
+            }
+            或
+            响应包含数据时
+            {
+                 "code":0,
+                 "codeInfo":"OK",
+                 "data":{...}
+            }
+        请求失败时，响应格式如下，在文档中简写为"code":xx
+            {
+                "code":xxx,
+                "codeInfo":"xxx",
+                "data":null
+            }
+    code与codeInfo的对应关系如下
+        OK(0),                  // 请求成功
+        NotRegister(100)        // 手机号未注册
+        Error(200),             // 请求失败
+        NotLogin(201),          // 未登录
+        MaxSessions(202),       // 多地登录，先登录的会被后登录的挤下线
+        ParameterError(203),    // 请求参数不正确
+		UserExists(204),        // 用户已存在
+		NotBelong(205),         // 指定的资源不属于当前用户
+        MissionStatusError(206) // 任务状态错误
+        MaxCount(207)           // 超出最大数量
+        InsufficientBalance(208)// 余额不足
+        NotAuth(209)            // 未认证
+    任务状态
+		WAIT,                   // 初始状态
+		PROCESSING,             // 有人接单
+		CANCEL,                 // 接单人取消接单
+		FINISH,                 // 结束
+    用户认证状态
+        NOT                     // 未认证
+        WAIT                    // 等待认证
+        PASS                    // 通过认证
+    订单类型
+        CHARGE                  // 充值
+        CHARGE_SUCCEEDED        // 充值成功
+        TRANSFER                // 提现
+        TRANSFER_SUCCEEDED      // 提现成功
+        TRANSFER_FAILED         // 提现失败
+        RELEASE                 // 发布任务
+        FINISH                  // 完成任务
+
+未登录状态请求
+    Response
+        "code":201
+验证过手机号但未注册
+    Response
+        "code":100
+
+获取学校列表
+    api/common/school get
+    Response
+    "data":{
+        "id":,      // id
+        "school"    // 学校
+    }
+
+发送短信验证码
+    api/common/sendSms post
+    Request
+    {
+        "mobile":,      // 手机号
+    }
+    成功时
+    "code":0
+    参数错误
+    "code":203
+
+登录
+    /api/account/login post
+    Content-Type:application/x-www-form-urlencoded
+    Request Body   username=**&password=**  // username手机号&password短信验证码
+    Response
+    成功时
+    "data":{
+        "id":,      // 用户id
+        "username":,// 用户名/昵称
+        "mobile":,  // 手机号
+        "idCard":,  // 身份证码
+        "name":,    // 姓名
+        "sex":,     // 性别
+        "authStatus":, // 认证状态
+        "school"    // 所在学校
+    }
+    手机号未注册
+    "code":100
+    失败
+    "code":201
+
+注销
+    /api/account/logout post
+    Response
+    "code":0
+
+注册
+    /api/account/register post
+    Request
+    {
+        "username":,    // 用户名/昵称
+        "mobile":,      // 手机号
+        "sex":,         // 性别
+        "schoolId":,      // 学校ID
+        "invitationCode":   // 邀请码 可为空
+    }
+    Response
+    成功时 注册成功后自动登录
+    "data":{
+        "id":,      // 用户id
+        "username":,// 用户名/昵称
+        "mobile":,  // 手机号
+        "idCard":,  // 身份证码
+        "name":,    // 姓名
+        "sex":,     // 性别
+        "authStatus":, // 认证状态
+        "school":{  // 所在学校
+            "id":,
+            "school":,
+        }
+    }
+    参数错误
+    "code":203
+    手机号已被注册
+    "code":204
+认证
+    /api/account/auth post
+    Content-Type:application/form-data
+    Request
+        file1
+        file2
+        name
+        idCard
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+获取用户认证状态
+    /api/account/getAuthStatus get 获取自己的认证状态
+    /api/account/getAuthStatus/{id} get
+    成功时
+    "data":{
+        "authStatus":, // 认证状态
+    }
+    参数错误
+    "code":203
+获取邀请码
+    /api/account/getInvitationCode get
+    Response
+    "data":{
+        "invitationCode":,  // 邀请码
+        "invitationCount":  // 邀请次数
+    }
+获取用户信息
+    /api/account/getUserInfo get 获取自己的信息
+    /api/account/getUserInfo/{id} get
+    成功时
+    "data":{
+        "id":,      // 用户id
+        "username":,// 用户名/昵称
+        "mobile":,  // 手机号
+        "idCard":,  // 身份证码
+        "name":,    // 姓名
+        "sex":,     // 性别
+        "authStatus":, // 认证状态
+        "school"    // 所在学校
+    }
+    参数错误
+    "code":203
+获取用户头像
+    /api/account/getUserAvatar get 获取自己的头像
+    /api/account/getUserAvatar/{id} get
+    Response
+        图片文件/默认头像
+设置用户头像
+    /api/account/setUserAvatar post
+    Request
+        file
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+
+添加地址
+    /api/address/add post
+    Request
+    {
+        "address":,     // 地址
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    超出最大数量
+    "code":207
+删除地址
+    api/address/delete post
+    Request
+    {
+        "id":,     //
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    地址不属于当前用户
+    "code":205
+修改地址
+    api/address/update post
+    Request
+    {
+        "id":,     //
+        "address":,     // 地址
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    地址不属于当前用户
+    "code":205
+地址列表
+    api/address/list get
+    Response
+    成功时
+    "data":[{
+        "id",       //
+        "address",  // 地址
+    },...
+    ]
+
+发布任务
+    api/mission/add post
+    Request
+    {
+        "title":,       // 标题
+        "description":, // 内容
+        "address":,     // 地址
+        "price":,       // 价格
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    余额不足
+    "code":208
+删除WAIT中的任务
+    api/mission/delete post
+    Request
+    {
+        "id":,          // 任务id
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    任务不属于当前用户
+    "code":205
+    任务状态错误
+    "code":206
+修改WAIT中的任务
+    api/mission/update post
+    Request
+    {
+        "id":,          // 任务ID
+        "title":,       // 标题
+        "description":, // 内容
+        "address":,     // 地址
+        "price":,       // 价格
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    任务不属于当前用户
+    "code":205
+    任务状态错误
+    "code":206
+    余额不足
+    "code":208
+结束发布的任务
+    api/mission/finish post
+    Request
+    {
+        "id":,       //
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    任务不属于当前用户
+    "code":205
+    任务状态错误
+    "code":206
+接受任务
+    api/mission/accept post
+    Request
+    {
+        "id":,       //
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    任务状态错误
+    "code":206
+    未认证
+    "code":209
+取消任务
+    api/mission/cancel post
+    Request
+    {
+        "id":,       //
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    任务不属于当前用户
+    "code":205
+    任务状态错误
+    "code":206
+确认取消任务
+    api/mission/acceptCancel post
+    Request
+    {
+        "id":,       //
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    任务不属于当前用户
+    "code":205
+    任务状态错误
+    "code":206
+我发布的任务
+    api/mission/myList get
+    Request
+    {
+        "status":[...], // 任务状态
+        "page":,        // 页号 可为空
+    }
+    Response
+    "data":[{
+        "id":,          //
+        "user":{        // 发布者信息
+            "id":,
+            "username":,
+            "sex":,
+            "mobile":,
+            "school",
+        }
+        "title":,       //
+        "description":, //
+        "address":,     //
+        "price":,       //
+        "time":,        //
+        "status":,      //
+        "acceptTime":,  // 接单时间
+        "acceptUser":   // 格式参照发布者信息
+    }...]
+我接受的任务
+    api/mission/acceptList get
+    Request
+    {
+         "status":[...], // 任务状态
+        "page":,         // 页号 可为空
+    }
+    Response
+    格式参照发布的任务
+附近的任务
+    api/mission/nearby get
+    Request
+    {
+        "schoolId",:    // 学校ID
+        "page":,        // 页号 可为空
+    }
+    Response
+    格式参照发布的任务
+
+查询账户余额
+     api/order/balance get
+     Response
+     "data":{
+        "balance":,     // 余额
+     }
+
+充值
+    api/order/charge post
+    Request
+    {
+        "amount":,      // 充值金额
+        "channel":,     // 充值渠道 https://www.pingxx.com/api?language=Java#%E6%94%AF%E4%BB%98%E6%B8%A0%E9%81%93%E5%B1%9E%E6%80%A7%E5%80%BC
+    }
+    Response
+    成功时
+    "data":charge       // charge对象字符串
+    参数错误
+    "code":203
+
+提现/转账
+    api/order/transfer post
+    Request
+    {
+        "amount":,      // 金额
+        "channel":,     // 渠道 支付宝：alipay，银联：unionpay，微信公众号：wx_pub，通联：allinpay，京东：jdpay
+        "recipient":,   // 渠道为alipay时为收款人支付宝账号 渠道为wx_pub时为open_id 其它渠道不填
+        "name":,        // 收款人姓名
+        "cardNumber":,  // 渠道为unionpay/allinpay/jdpay时为收款人银行卡号或者存折号 其它渠道不填
+        "openBankCode":,// 渠道为unionpay/allinpay/jdpay时为开户银行编号 其它渠道不填 银行与编号对应关系https://www.pingxx.com/api#%E9%80%9A%E8%81%94%E4%BB%A3%E4%BB%98%E9%93%B6%E8%A1%8C%E7%BC%96%E5%8F%B7%E8%AF%B4%E6%98%8E
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
+    余额不足
+    "code":208
+    未认证
+    "code":209
+
+订单列表
+    api/order/list get
+    Request
+    {
+        "page":,        // 页号 可为空
+    }
+    Response
+    "data":[{
+        "id":,          // 订单id
+        "time":,        // 时间
+        "amount":,      // 金额
+        "missionId"     // 任务id
+        "type"          // 订单类型
+    }...]
+
+意见反馈
+    api/feedback/add post
+    Request
+    {
+        "feedback":,       //
+    }
+    Response
+    成功时
+    "code":0
+    参数错误
+    "code":203
